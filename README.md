@@ -1,0 +1,540 @@
+```html
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Biker México - Rutas y Garaje</title>
+    <!-- Tailwind CSS CDN (Gratis) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            amber: '#f59e0b',
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            accent: '#d97706'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Inter:wght@300;400;600;700&display=swap');
+        
+        .font-biker {
+            font-family: 'Teko', sans-serif;
+            letter-spacing: 1px;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: #fff;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        .leaflet-popup-tip {
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('mapa')">
+                    <div class="p-2.5 bg-amber-500 rounded-xl text-slate-950 font-bold shadow-lg shadow-amber-500/20">
+                        <i data-lucide="bike" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <span class="font-biker text-3xl font-bold uppercase tracking-wider text-amber-500 block leading-none">RUTAS Y ASFALTO</span>
+                        <span class="text-xs text-slate-400 font-semibold tracking-widest uppercase">Club Biker México</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Nav Navigation -->
+                <nav class="hidden md:flex space-x-1 lg:space-x-2">
+                    <button onclick="switchTab('mapa')" id="nav-mapa" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 transition bg-amber-500 text-slate-950">
+                        <i data-lucide="map" class="w-4 h-4"></i>
+                        <span>Mapa & Rutas</span>
+                    </button>
+                    <button onclick="switchTab('logros')" id="nav-logros" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+                        <i data-lucide="award" class="w-4 h-4"></i>
+                        <span>Insignias</span>
+                    </button>
+                    <button onclick="switchTab('garage')" id="nav-garage" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+                        <i data-lucide="wrench" class="w-4 h-4"></i>
+                        <span>Mi Garage</span>
+                    </button>
+                    <button onclick="switchTab('tienda')" id="nav-tienda" class="nav-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+                        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                        <span>Biker Shop</span>
+                    </button>
+                </nav>
+
+                <!-- Status Summary -->
+                <div class="hidden lg:flex items-center space-x-4 border-l border-slate-800 pl-6">
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">Total Rodado</div>
+                        <div class="text-amber-500 font-bold font-biker text-xl leading-none">12,450 KM</div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border border-amber-500/40 flex items-center justify-center text-amber-500">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-4 space-y-2">
+            <button onclick="switchTab('mapa')" class="w-full text-left px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+                <i data-lucide="map" class="w-5 h-5 text-amber-500"></i>
+                <span>Mapa & Rutas</span>
+            </button>
+            <button onclick="switchTab('logros')" class="w-full text-left px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+                <i data-lucide="award" class="w-5 h-5 text-amber-500"></i>
+                <span>Insignias y Logros</span>
+            </button>
+            <button onclick="switchTab('garage')" class="w-full text-left px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+                <i data-lucide="wrench" class="w-5 h-5 text-amber-500"></i>
+                <span>Mi Garage</span>
+            </button>
+            <button onclick="switchTab('tienda')" class="w-full text-left px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+                <i data-lucide="shopping-bag" class="w-5 h-5 text-amber-500"></i>
+                <span>Tienda Oficial</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINERS -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: MAPA Y RUTAS -->
+        <section id="tab-mapa" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Interactive Map Wrapper -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                    <div class="p-4 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold font-biker text-white tracking-wide uppercase flex items-center gap-2">
+                                <i data-lucide="map-pin" class="text-amber-500 w-5 h-5"></i> Mapas de Pueblos Mágicos y Rutas
+                            </h2>
+                            <p class="text-xs text-slate-400">Haz clic en los puntos marcados para ver info y subir tu foto de logrado.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center text-xs bg-amber-500/10 text-amber-500 px-2.5 py-1 rounded-full border border-amber-500/20">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span> Pueblos Mágicos Visibles
+                            </span>
+                        </div>
+                    </div>
+                    <!-- Map Canvas -->
+                    <div id="map" class="w-full h-[450px] lg:h-[550px] bg-slate-950 z-10"></div>
+                </div>
+
+                <!-- Side Panel: Rutas Destacadas & Calculadora -->
+                <div class="space-y-6 flex flex-col">
+                    <!-- Rutas Recomendadas -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <h3 class="text-lg font-bold font-biker uppercase text-amber-500 mb-3 flex items-center justify-between">
+                            <span><i data-lucide="navigation" class="inline w-4 h-4 mr-1"></i> Rutas Recomendadas</span>
+                            <span class="text-xs font-normal text-slate-400">México</span>
+                        </h3>
+                        <div class="space-y-3 max-h-[250px] overflow-y-auto pr-1">
+                            <!-- Ruta 1 -->
+                            <div onclick="focusRoute('sierra-gorda')" class="p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/50 cursor-pointer transition flex justify-between items-center group">
+                                <div>
+                                    <div class="font-bold text-sm text-slate-200 group-hover:text-amber-400 transition">Sierra Gorda (Querétaro)</div>
+                                    <div class="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                                        <span><i data-lucide="milestone" class="inline w-3 h-3"></i> 280 KM</span>
+                                        <span>•</span>
+                                        <span><i data-lucide="fuel" class="inline w-3 h-3 text-emerald-400"></i> 6 Gasolineras</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold px-2 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-md">Curvas</span>
+                            </div>
+
+                            <!-- Ruta 2 -->
+                            <div onclick="focusRoute('valle-bravo')" class="p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/50 cursor-pointer transition flex justify-between items-center group">
+                                <div>
+                                    <div class="font-bold text-sm text-slate-200 group-hover:text-amber-400 transition">Ruta del Sol (Valle de Bravo)</div>
+                                    <div class="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                                        <span><i data-lucide="milestone" class="inline w-3 h-3"></i> 145 KM</span>
+                                        <span>•</span>
+                                        <span><i data-lucide="fuel" class="inline w-3 h-3 text-emerald-400"></i> 4 Gasolineras</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">Tranquila</span>
+                            </div>
+
+                            <!-- Ruta 3 -->
+                            <div onclick="focusRoute('tequila')" class="p-3 bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/50 cursor-pointer transition flex justify-between items-center group">
+                                <div>
+                                    <div class="font-bold text-sm text-slate-200 group-hover:text-amber-400 transition">Ruta Agave (Guadalajara - Tequila)</div>
+                                    <div class="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                                        <span><i data-lucide="milestone" class="inline w-3 h-3"></i> 65 KM</span>
+                                        <span>•</span>
+                                        <span><i data-lucide="fuel" class="inline w-3 h-3 text-emerald-400"></i> 3 Gasolineras</span>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-md">Corta</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculadora Rápidas de Viaje -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex-grow flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold font-biker uppercase text-amber-500 mb-3 flex items-center gap-2">
+                                <i data-lucide="calculator" class="w-5 h-5"></i> Calculador de Consumo y Gasolina
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-slate-400 mb-1 block">Distancia estimada a rodar (KM)</label>
+                                    <input type="number" id="calc-km" value="320" oninput="calculateFuel()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs text-slate-400 mb-1 block">Rendimiento (KM/L)</label>
+                                        <input type="number" id="calc-kml" value="18" oninput="calculateFuel()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-slate-400 mb-1 block">Precio Gas ($/L)</label>
+                                        <input type="number" id="calc-price" value="24.50" oninput="calculateFuel()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Result Display -->
+                        <div class="mt-4 p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-slate-400 block">Litros Necesarios</span>
+                                <span id="res-liters" class="text-lg font-bold text-amber-500">17.8 L</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block">Costo Estimado</span>
+                                <span id="res-cost" class="text-lg font-bold text-emerald-400">$435.50 MXN</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Subir Foto Logrado -->
+            <div id="modal-upload" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                    <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                    <h3 class="text-2xl font-bold font-biker text-amber-500 uppercase mb-1">¡Registrar Check-In!</h3>
+                    <p class="text-xs text-slate-400 mb-4">Sube tu evidencia en <span id="modal-place-name" class="text-white font-semibold">Destino</span> para marcarlo como logrado.</p>
+                    
+                    <form onsubmit="handleCheckin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha de la rodada</label>
+                            <input type="date" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Fotografía de la moto en el lugar</label>
+                            <div class="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-4 text-center cursor-pointer transition">
+                                <i data-lucide="camera" class="w-8 h-8 mx-auto text-slate-500 mb-2"></i>
+                                <span class="text-xs text-slate-400 block">Haz clic para seleccionar o arrastra una imagen</span>
+                                <input type="file" accept="image/*" class="hidden" id="photo-input" onchange="previewImage(event)">
+                            </div>
+                            <div id="image-preview" class="hidden mt-2 rounded-lg overflow-hidden h-32 bg-slate-950 flex items-center justify-center">
+                                <img id="preview-img" class="h-full object-cover w-full" src="" alt="Vista previa">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Comentario / Anécdota</label>
+                            <textarea rows="2" placeholder="¿Cómo estuvo el camino?" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-amber-500/20 font-biker text-lg uppercase tracking-wider">
+                            Guardar Logro & Desbloquear
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: INSIGNIAS Y LOGROS -->
+        <section id="tab-logros" class="tab-content hidden space-y-8">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500">
+                        <i data-lucide="trophy" class="w-10 h-10"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold font-biker text-white uppercase tracking-wider">Nivel de Biker: Leyenda del Asfalto</h2>
+                        <p class="text-xs text-slate-400">Has completado el 65% de las insignias disponibles en México.</p>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/3 space-y-2">
+                    <div class="flex justify-between text-xs text-slate-400 font-semibold">
+                        <span>Insignias Desbloqueadas</span>
+                        <span class="text-amber-500">13 / 20</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700">
+                        <div class="bg-gradient-to-r from-amber-600 to-amber-400 h-full rounded-full" style="width: 65%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-bold font-biker text-amber-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <i data-lucide="award" class="w-5 h-5"></i> Insignias Obtenidas
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="unlocked-badges-container"></div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-bold font-biker text-slate-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <i data-lucide="lock" class="w-5 h-5"></i> Insignias por Recorrer
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="locked-badges-container"></div>
+            </div>
+        </section>
+
+        <!-- TAB 3: GARAGE Y SERVICIOS -->
+        <section id="tab-garage" class="tab-content hidden space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                        <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <div>
+                                <span class="text-xs font-bold px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-md uppercase tracking-wider">Moto Principal</span>
+                                <h2 class="text-3xl font-bold font-biker text-white tracking-wide uppercase mt-1" id="current-bike-name">BMW R 1250 GS Adventure</h2>
+                                <p class="text-xs text-slate-400">Año 2023 • Placas: 88-ABC-1 • "La Rompe Caminos"</p>
+                            </div>
+                            <button onclick="openAddBikeModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-semibold px-4 py-2 rounded-xl flex items-center space-x-2 transition">
+                                <i data-lucide="plus" class="w-4 h-4 text-amber-500"></i>
+                                <span>Cambiar Moto</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
+                            <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
+                                <span class="text-xs text-slate-400 block mb-1">Kilometraje Actual</span>
+                                <span class="text-xl font-bold font-biker text-amber-500" id="current-bike-km">24,850 KM</span>
+                            </div>
+                            <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
+                                <span class="text-xs text-slate-400 block mb-1">Próximo Servicio</span>
+                                <span class="text-xl font-bold font-biker text-emerald-400">30,000 KM</span>
+                            </div>
+                            <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
+                                <span class="text-xs text-slate-400 block mb-1">Cilindrada</span>
+                                <span class="text-xl font-bold font-biker text-white">1,254 cc</span>
+                            </div>
+                            <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
+                                <span class="text-xs text-slate-400 block mb-1">Nivel de Tanque</span>
+                                <span class="text-xl font-bold font-biker text-blue-400">30 L (Full)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold font-biker text-amber-500 uppercase tracking-wide flex items-center gap-2">
+                                <i data-lucide="wrench" class="w-5 h-5"></i> Historial de Servicios
+                            </h3>
+                            <button onclick="addServiceRecord()" class="text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Registrar Servicio
+                            </button>
+                        </div>
+
+                        <div class="space-y-4" id="service-list">
+                            <div class="p-4 bg-slate-800/40 rounded-xl border border-slate-700/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="flex items-start space-x-3">
+                                    <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg mt-0.5">
+                                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-200 text-sm">Cambio de Aceite Sintético y Filtro</h4>
+                                        <p class="text-xs text-slate-400 mt-0.5">Taller Agencia BMW Motos • Aceite Motul 7100 15W50</p>
+                                    </div>
+                                </div>
+                                <div class="text-right sm:self-center">
+                                    <span class="text-xs font-bold text-amber-500 block">20,000 KM</span>
+                                    <span class="text-xs text-slate-400">$3,400 MXN</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                        <h3 class="text-lg font-bold font-biker text-amber-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                            <i data-lucide="clipboard-check" class="w-5 h-5"></i> Checklist Pre-Rodada
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-800/50 transition">
+                                <input type="checkbox" checked class="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700">
+                                <span class="text-xs text-slate-300">Presión de neumáticos (Frío)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-800/50 transition">
+                                <input type="checkbox" checked class="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700">
+                                <span class="text-xs text-slate-300">Nivel de Aceite del Motor</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-800/50 transition">
+                                <input type="checkbox" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700">
+                                <span class="text-xs text-slate-300">Tensión de Cadena / Cardán</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: TIENDA BIKER -->
+        <section id="tab-tienda" class="tab-content hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold font-biker text-white uppercase tracking-wider">Tienda Oficial del Club Biker</h2>
+                    <p class="text-xs text-slate-400">Equipamiento oficial, parches bordados y accesorios.</p>
+                </div>
+                <button onclick="toggleCartModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-amber-500/20">
+                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                    <span>Carrito</span>
+                    <span id="cart-count" class="bg-slate-950 text-amber-400 text-xs px-2 py-0.5 rounded-full ml-1">0</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="h-48 bg-slate-950 flex items-center justify-center p-4">
+                            <img src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=500&q=80" alt="Chamarra Biker" class="h-full object-cover rounded-lg">
+                        </div>
+                        <div class="p-4">
+                            <span class="text-[10px] text-amber-500 font-bold uppercase tracking-wider block mb-1">Protección</span>
+                            <h3 class="font-bold text-slate-200 text-sm">Chamarra Leather Pro</h3>
+                        </div>
+                    </div>
+                    <div class="p-4 pt-0 flex justify-between items-center">
+                        <span class="font-biker text-xl font-bold text-white">$3,850 MXN</span>
+                        <button onclick="addToCart('Chamarra Leather Pro', 3850)" class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 p-2.5 rounded-xl border border-slate-700 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Carrito -->
+            <div id="modal-cart" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                    <button onclick="toggleCartModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                    <h3 class="text-2xl font-bold font-biker text-amber-500 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="shopping-cart" class="w-6 h-6"></i> Carrito
+                    </h3>
+                    <div id="cart-items" class="space-y-3 max-h-60 overflow-y-auto mb-4"></div>
+                    <div class="border-t border-slate-800 pt-4 space-y-3">
+                        <div class="flex justify-between items-center font-bold">
+                            <span class="text-sm text-slate-300">Total:</span>
+                            <span id="cart-total" class="text-xl font-biker text-amber-500">$0 MXN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-xs text-slate-500">© 2026 Club Biker México. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        lucide.createIcons();
+        let map, markers = [], activeDestination = null, cart = [];
+
+        const destinations = [
+            { id: 'tequila', name: 'Tequila, Jalisco', lat: 20.8864, lng: -103.8368, completed: true, photo: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=400&q=80', desc: 'Campos de agave y destilerías.' },
+            { id: 'sierra-gorda', name: 'Pinal de Amoles', lat: 21.1378, lng: -99.6261, completed: true, photo: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80', desc: 'Ruta con curvas en la sierra.' },
+            { id: 'valle-bravo', name: 'Valle de Bravo', lat: 19.1925, lng: -100.1312, completed: false, photo: null, desc: 'Lago y excelentes carreteras.' }
+        ];
+
+        window.onload = function() { initMap(); renderBadges(); calculateFuel(); };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            if (tabName === 'mapa' && map) setTimeout(() => map.invalidateSize(), 200);
+        }
+
+        function initMap() {
+            map = L.map('map').setView([22.5000, -100.0000], 5);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
+
+            destinations.forEach(dest => {
+                const iconColor = dest.completed ? '#f59e0b' : '#64748b';
+                const customIcon = L.divIcon({
+                    className: 'custom-map-pin',
+                    html: `<div style="background-color: ${iconColor}; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #0f172a;"></div>`,
+                    iconSize: [22, 22]
+                });
+                const marker = L.marker([dest.lat, dest.lng], { icon: customIcon }).addTo(map);
+                marker.bindPopup(`<b>${dest.name}</b><br><small>${dest.desc}</small>`);
+            });
+        }
+
+        function calculateFuel() {
+            const km = parseFloat(document.getElementById('calc-km').value) || 0;
+            const kml = parseFloat(document.getElementById('calc-kml').value) || 1;
+            const price = parseFloat(document.getElementById('calc-price').value) || 0;
+            const liters = (km / kml).toFixed(1);
+            document.getElementById('res-liters').innerText = `${liters} L`;
+            document.getElementById('res-cost').innerText = `$${(liters * price).toFixed(2)} MXN`;
+        }
+
+        function toggleCartModal() { document.getElementById('modal-cart').classList.toggle('hidden'); }
+        function addToCart(title, price) { cart.push({ title, price }); document.getElementById('cart-count').innerText = cart.length; }
+        function renderBadges() {}
+    </script>
+</body>
+</html>
+```
